@@ -23,6 +23,7 @@
   let sending = false;
   let forceNewSession = false;
   let pendingImages = []; // [{dataUrl, mimeType, base64}]
+  let pageContext = null; // {url, title, description} from parent page via postMessage
 
   // --- DOM refs --------------------------------------------------------
   const messagesEl = document.getElementById("widgetMessages");
@@ -78,10 +79,22 @@
       inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + "px";
     });
 
-    // Listen for theme changes from parent
+    // Attachment button visibility
+    if (CFG.show_attachments === false) {
+      if (attachBtn) attachBtn.style.display = "none";
+    }
+
+    // Listen for messages from parent page (theme + page context)
     window.addEventListener("message", function (e) {
       if (e.data && e.data.type === "mate-theme") {
         document.documentElement.setAttribute("data-theme", e.data.theme === "dark" ? "dark" : "");
+      }
+      if (e.data && e.data.type === "mate-context") {
+        pageContext = {
+          url: e.data.url || "",
+          title: e.data.title || "",
+          description: e.data.description || "",
+        };
       }
     });
   }
@@ -109,6 +122,7 @@
     if (text) parts.push({ text: text });
 
     const payload = { message: text, parts: parts, user_id: userId, session_id: sessionId, new_session: forceNewSession };
+    if (pageContext) payload.page_context = pageContext;
     forceNewSession = false;
 
     fetch(`${BASE}/widget/api/chat`, {

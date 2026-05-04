@@ -154,6 +154,15 @@
       }
       setTimeout(function () {
         try { iframe.contentWindow.postMessage({ type: "mate-theme", theme: t }, "*"); } catch (_) {}
+        try {
+          var metaDesc = document.querySelector('meta[name="description"]');
+          iframe.contentWindow.postMessage({
+            type: "mate-context",
+            url: window.location.href,
+            title: document.title,
+            description: metaDesc ? (metaDesc.getAttribute("content") || "") : "",
+          }, "*");
+        } catch (_) {}
       }, 300);
     }
   }

@@ -10,7 +10,12 @@
   <div class="admin-container">
     <div class="admin-header">
       <h1>Widget Admin</h1>
-      <span class="admin-header-badge">{{ agent_name }}</span>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="admin-header-badge">{{ agent_name }}</span>
+        <button id="previewToggle" class="admin-btn admin-btn-primary" style="font-size:12px;padding:4px 12px">
+          Preview Widget
+        </button>
+      </div>
     </div>
 
     <!-- Tabs -->
@@ -18,6 +23,7 @@
       <button class="admin-tab active" data-tab="agent">Agent Settings</button>
       <button class="admin-tab" data-tab="memory">Memory Blocks</button>
       <button class="admin-tab" data-tab="files">Files</button>
+      <button class="admin-tab" data-tab="appearance">Appearance</button>
     </div>
 
     <!-- Agent Settings Panel -->
@@ -87,6 +93,76 @@
         </form>
       </div>
     </div>
+    <!-- Appearance Panel -->
+    <div id="panel-appearance" class="admin-panel">
+      <div class="admin-card">
+        <div class="admin-card-title">Widget Appearance &amp; Behaviour</div>
+        <form id="appearanceForm">
+          <div class="admin-field">
+            <label for="cfgTitle">Widget Title</label>
+            <input type="text" id="cfgTitle" placeholder="e.g. Support Chat">
+          </div>
+          <div class="admin-field">
+            <label for="cfgGreeting">Greeting / Welcome Message</label>
+            <textarea id="cfgGreeting" rows="3" placeholder="How can I help you today?"></textarea>
+          </div>
+          <div class="admin-field">
+            <label for="cfgTheme">Theme</label>
+            <select id="cfgTheme">
+              <option value="auto">Auto (follow system)</option>
+              <option value="light">Light</option>
+              <option value="dark">Dark</option>
+            </select>
+          </div>
+          <div class="admin-field">
+            <label for="cfgButtonColor">Button / Accent Color</label>
+            <input type="color" id="cfgButtonColor" value="#2563eb">
+          </div>
+          <div class="admin-field">
+            <label for="cfgIconUrl">Custom Icon URL <span style="font-weight:400;font-size:12px">(optional)</span></label>
+            <input type="url" id="cfgIconUrl" placeholder="https://example.com/icon.png">
+          </div>
+          <div class="admin-field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cfgShowAttachments" style="width:auto">
+              Show attachment button
+            </label>
+          </div>
+          <div class="admin-field">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="cfgContextInjection" style="width:auto">
+              Inject page context into conversations (URL &amp; title)
+            </label>
+          </div>
+          <div class="admin-actions">
+            <button type="submit" class="admin-btn admin-btn-primary">Save Appearance</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live preview panel — floats bottom-right like a real widget -->
+  <div id="previewPanel" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;
+      width:400px;height:620px;max-width:calc(100vw - 40px);max-height:calc(100vh - 40px);
+      border-radius:16px;overflow:hidden;
+      box-shadow:0 8px 30px rgba(0,0,0,.18),0 2px 8px rgba(0,0,0,.1);
+      border:1px solid rgba(0,0,0,.08);background:#fff;flex-direction:column">
+    <div style="background:#f8fafc;border-bottom:1px solid #e2e8f0;padding:8px 12px;
+        display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-size:11px;font-weight:600;color:#64748b;letter-spacing:.03em">LIVE PREVIEW</span>
+      <div style="display:flex;gap:6px;align-items:center">
+        <button id="previewReload" title="Reload preview"
+            style="font-size:11px;padding:2px 8px;background:#e2e8f0;border:none;border-radius:4px;cursor:pointer;color:#475569">
+          ↺ Reload
+        </button>
+        <button id="previewClose" title="Close preview"
+            style="font-size:18px;background:none;border:none;cursor:pointer;color:#94a3b8;line-height:1;padding:0 2px">
+          &times;
+        </button>
+      </div>
+    </div>
+    <iframe id="previewIframe" style="width:100%;flex:1;border:none" allow="clipboard-write"></iframe>
   </div>
 
   <script>
