@@ -47,6 +47,60 @@
     });
   });
 
+  // --- Live preview ----------------------------------------------------
+  var previewPanel = document.getElementById("previewPanel");
+  var previewIframe = document.getElementById("previewIframe");
+  var previewToggle = document.getElementById("previewToggle");
+  var previewReload = document.getElementById("previewReload");
+  var previewClose = document.getElementById("previewClose");
+  var chatUrl = BASE + "/widget/chat?key=" + API_KEY;
+  var previewOpen = false;
+
+  function _freshUrl() { return chatUrl + "&_t=" + Date.now(); }
+
+  function _applyColorToPreview(color) {
+    try {
+      var doc = previewIframe.contentDocument || (previewIframe.contentWindow && previewIframe.contentWindow.document);
+      if (!doc || !doc.documentElement) return;
+      doc.documentElement.style.setProperty("--w-primary", color);
+      doc.documentElement.style.setProperty("--w-primary-hover", color);
+      doc.documentElement.style.setProperty("--w-user-bubble", color);
+    } catch (_) {}
+  }
+
+  function openPreview() {
+    previewPanel.style.display = "flex";
+    previewToggle.textContent = "Hide Preview";
+    previewOpen = true;
+    if (!previewIframe.src || previewIframe.src === "about:blank") {
+      previewIframe.src = _freshUrl();
+    }
+  }
+
+  function closePreview() {
+    previewPanel.style.display = "none";
+    previewToggle.textContent = "Preview Widget";
+    previewOpen = false;
+  }
+
+  previewToggle.addEventListener("click", function () {
+    previewOpen ? closePreview() : openPreview();
+  });
+  previewClose.addEventListener("click", closePreview);
+  previewReload.addEventListener("click", function () {
+    previewIframe.src = _freshUrl();
+  });
+
+  // --- Appearance refs -------------------------------------------------
+  var appearanceForm = document.getElementById("appearanceForm");
+  var cfgTitle = document.getElementById("cfgTitle");
+  var cfgGreeting = document.getElementById("cfgGreeting");
+  var cfgTheme = document.getElementById("cfgTheme");
+  var cfgButtonColor = document.getElementById("cfgButtonColor");
+  var cfgIconUrl = document.getElementById("cfgIconUrl");
+  var cfgShowAttachments = document.getElementById("cfgShowAttachments");
+  var cfgContextInjection = document.getElementById("cfgContextInjection");
+
   // --- Agent Settings --------------------------------------------------
   var agentForm = document.getElementById("agentForm");
   var agentInstruction = document.getElementById("agentInstruction");
@@ -245,10 +299,49 @@
     return (bytes / 1048576).toFixed(1) + " MB";
   }
 
+  // --- Appearance ------------------------------------------------------
+  function loadAppearance() {
+    api("GET", "/widget-config").then(function (res) {
+      if (!res.success) return;
+      var cfg = res.widget_config || {};
+      cfgTitle.value = cfg.title || "";
+      cfgGreeting.value = cfg.greeting || "";
+      cfgTheme.value = cfg.theme || "auto";
+      cfgButtonColor.value = cfg.button_color || "#2563eb";
+      cfgIconUrl.value = cfg.icon_url || "";
+      cfgShowAttachments.checked = cfg.show_attachments !== false; // default true
+      cfgContextInjection.checked = !!cfg.context_injection;
+    });
+  }
+
+  // Real-time color preview — fires while the native color picker is open
+  cfgButtonColor.addEventListener("input", function () {
+    if (previewOpen) _applyColorToPreview(cfgButtonColor.value);
+  });
+
+  appearanceForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    api("PUT", "/widget-config", {
+      title: cfgTitle.value,
+      greeting: cfgGreeting.value,
+      theme: cfgTheme.value,
+      button_color: cfgButtonColor.value,
+      icon_url: cfgIconUrl.value,
+      show_attachments: cfgShowAttachments.checked,
+      context_injection: cfgContextInjection.checked,
+    }).then(function (res) {
+      toast(res.success ? "Appearance saved" : (res.detail || "Failed"), res.success ? "success" : "error");
+      if (res.success && previewOpen) {
+        previewIframe.src = _freshUrl(); // cache-busted reload with new config
+      }
+    });
+  });
+
   // --- Init ------------------------------------------------------------
   loadAgent();
   loadBlocks();
   loadFiles();
+  loadAppearance();
 
   // Expose for inline onclick
   window.widgetAdmin = {

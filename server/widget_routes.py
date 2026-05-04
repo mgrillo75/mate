@@ -37,6 +37,17 @@ templates = Jinja2Templates(directory=str(project_root / "templates"))
 ADK_HOST: str = "localhost"
 ADK_PORT: int = 8001
 
+# BCP-47 short code → display name used in context injection prefix
+_LANG_NAMES: dict = {
+    "en": "English", "sr": "Serbian", "hr": "Croatian", "bs": "Bosnian",
+    "de": "German", "fr": "French", "es": "Spanish", "it": "Italian",
+    "pt": "Portuguese", "nl": "Dutch", "pl": "Polish", "ru": "Russian",
+    "zh": "Chinese", "ja": "Japanese", "ko": "Korean", "ar": "Arabic",
+    "he": "Hebrew", "fa": "Persian", "tr": "Turkish", "sv": "Swedish",
+    "no": "Norwegian", "da": "Danish", "fi": "Finnish", "cs": "Czech",
+    "sk": "Slovak", "hu": "Hungarian", "ro": "Romanian", "uk": "Ukrainian",
+}
+
 
 def configure_widget_proxy(adk_host: str, adk_port: int):
     global ADK_HOST, ADK_PORT
@@ -72,6 +83,10 @@ def _check_origin(request: Request, widget_key: WidgetApiKey):
         return
     origin = request.headers.get("origin") or request.headers.get("referer", "")
     if not origin:
+        return
+    # Always allow requests originating from the MATE server itself (e.g. admin panel preview)
+    server_origin = str(request.base_url).rstrip("/")
+    if origin.rstrip("/").startswith(server_origin):
         return
     origin_normalised = origin.rstrip("/")
     for allowed_origin in allowed:
@@ -147,6 +162,8 @@ async def widget_chat(request: Request, wk: WidgetApiKey = Depends(verify_widget
     new_session = body.get("new_session", False)
     # Accept pre-built parts array (with inline_data for images)
     raw_parts = body.get("parts")
+    page_context = body.get("page_context")  # Optional dict: {url, title, description, lang}
+    lang = body.get("lang", "") or (page_context or {}).get("lang", "")  # BCP-47 short code e.g. "de"
 
     scoped_user = f"widget_{wk.id}_{user_id}"
     app_name = wk.agent_name
@@ -160,6 +177,29 @@ async def widget_chat(request: Request, wk: WidgetApiKey = Depends(verify_widget
         message_parts = raw_parts
     else:
         message_parts = [{"text": message_text}]
+
+    # Inject page context and language as a prefix when enabled in widget config
+    cfg = wk.get_widget_config()
+    if cfg.get("context_injection"):
+        prefix_lines = []
+        if page_context and isinstance(page_context, dict):
+            ctx_url = str(page_context.get("url", ""))[:500]
+            ctx_title = str(page_context.get("title", ""))[:200]
+            if ctx_url or ctx_title:
+                prefix_lines.append(f'[Page context: user is visiting "{ctx_title}" at {ctx_url}]')
+        if lang:
+            lang_name = _LANG_NAMES.get(lang[:5].lower(), lang)
+            prefix_lines.append(f'[User language: {lang_name} ({lang})]')
+        if prefix_lines:
+            prefix = "\n".join(prefix_lines) + "\n\n"
+            injected = False
+            for part in message_parts:
+                if "text" in part:
+                    part["text"] = prefix + part["text"]
+                    injected = True
+                    break
+            if not injected:
+                message_parts.insert(0, {"text": prefix})
 
     adk_payload = {
         "app_name": app_name,
@@ -235,6 +275,50 @@ async def widget_config(wk: WidgetApiKey = Depends(verify_widget_key)):
         "button_color": cfg.get("button_color", ""),
         "title": cfg.get("title", wk.agent_name),
     }
+
+
+# ---------------------------------------------------------------------------
+# Widget Admin API — widget config (appearance & behaviour)
+# ---------------------------------------------------------------------------
+
+_ALLOWED_WIDGET_CONFIG_FIELDS = {
+    "title", "greeting", "theme", "button_color",
+    "show_attachments", "icon_url", "context_injection",
+}
+
+
+@admin_api_router.get("/widget-config")
+async def get_widget_config_admin(wk: WidgetApiKey = Depends(verify_widget_key)):
+    """Return the full widget_config for this key."""
+    return {"success": True, "widget_config": wk.get_widget_config()}
+
+
+@admin_api_router.put("/widget-config")
+async def update_widget_config(request: Request, wk: WidgetApiKey = Depends(verify_widget_key)):
+    """Update allowed widget appearance/behaviour fields."""
+    data = await request.json()
+    db = get_database_client()
+    session = db.get_session()
+    if not session:
+        raise HTTPException(status_code=500, detail="Database unavailable")
+    try:
+        record = session.query(WidgetApiKey).filter_by(id=wk.id).first()
+        if not record:
+            raise HTTPException(status_code=404, detail="Widget key not found")
+        current = record.get_widget_config()
+        for field in _ALLOWED_WIDGET_CONFIG_FIELDS:
+            if field in data:
+                current[field] = data[field]
+        record.set_widget_config(current)
+        session.commit()
+        return {"success": True, "widget_config": record.get_widget_config()}
+    except HTTPException:
+        raise
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        session.close()
 
 
 # ---------------------------------------------------------------------------
