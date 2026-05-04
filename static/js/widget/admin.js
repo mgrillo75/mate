@@ -47,50 +47,6 @@
     });
   });
 
-  // --- Live preview ----------------------------------------------------
-  var previewPanel = document.getElementById("previewPanel");
-  var previewIframe = document.getElementById("previewIframe");
-  var previewToggle = document.getElementById("previewToggle");
-  var previewReload = document.getElementById("previewReload");
-  var previewClose = document.getElementById("previewClose");
-  var chatUrl = BASE + "/widget/chat?key=" + API_KEY;
-  var previewOpen = false;
-
-  function _freshUrl() { return chatUrl + "&_t=" + Date.now(); }
-
-  function _applyColorToPreview(color) {
-    try {
-      var doc = previewIframe.contentDocument || (previewIframe.contentWindow && previewIframe.contentWindow.document);
-      if (!doc || !doc.documentElement) return;
-      doc.documentElement.style.setProperty("--w-primary", color);
-      doc.documentElement.style.setProperty("--w-primary-hover", color);
-      doc.documentElement.style.setProperty("--w-user-bubble", color);
-    } catch (_) {}
-  }
-
-  function openPreview() {
-    previewPanel.style.display = "flex";
-    previewToggle.textContent = "Hide Preview";
-    previewOpen = true;
-    if (!previewIframe.src || previewIframe.src === "about:blank") {
-      previewIframe.src = _freshUrl();
-    }
-  }
-
-  function closePreview() {
-    previewPanel.style.display = "none";
-    previewToggle.textContent = "Preview Widget";
-    previewOpen = false;
-  }
-
-  previewToggle.addEventListener("click", function () {
-    previewOpen ? closePreview() : openPreview();
-  });
-  previewClose.addEventListener("click", closePreview);
-  previewReload.addEventListener("click", function () {
-    previewIframe.src = _freshUrl();
-  });
-
   // --- Appearance refs -------------------------------------------------
   var appearanceForm = document.getElementById("appearanceForm");
   var cfgTitle = document.getElementById("cfgTitle");
@@ -208,7 +164,6 @@
 
   // --- File Search -----------------------------------------------------
   var fileStoresList = document.getElementById("fileStoresList");
-  var uploadForm = document.getElementById("uploadForm");
   var uploadStoreSelect = document.getElementById("uploadStore");
   var uploadFileInput = document.getElementById("uploadFile");
   var uploadArea = document.getElementById("uploadArea");
@@ -314,9 +269,15 @@
     });
   }
 
-  // Real-time color preview — fires while the native color picker is open
+  // Real-time color update: floating button + chat iframe
   cfgButtonColor.addEventListener("input", function () {
-    if (previewOpen) _applyColorToPreview(cfgButtonColor.value);
+    var color = cfgButtonColor.value;
+    var btn = document.getElementById("mate-widget-btn");
+    if (btn) btn.style.background = color;
+    var iframe = document.getElementById("mate-widget-iframe");
+    if (iframe && iframe.contentWindow) {
+      try { iframe.contentWindow.postMessage({ type: "mate-color", button_color: color }, "*"); } catch (_) {}
+    }
   });
 
   appearanceForm.addEventListener("submit", function (e) {
@@ -331,8 +292,13 @@
       context_injection: cfgContextInjection.checked,
     }).then(function (res) {
       toast(res.success ? "Appearance saved" : (res.detail || "Failed"), res.success ? "success" : "error");
-      if (res.success && previewOpen) {
-        previewIframe.src = _freshUrl(); // cache-busted reload with new config
+      if (res.success) {
+        // Reload the widget iframe if it has been opened, so new config takes effect
+        var iframe = document.getElementById("mate-widget-iframe");
+        if (iframe && iframe.src && iframe.src !== "about:blank") {
+          var base = iframe.src.split("&_t=")[0];
+          iframe.src = base + "&_t=" + Date.now();
+        }
       }
     });
   });

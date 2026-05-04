@@ -214,6 +214,21 @@
     injectStyles();
     buildWidget();
 
+    // Fetch saved button color + theme immediately so the button looks right
+    // before the user opens chat for the first time.
+    fetch(CONFIG.server + "/widget/public-config?key=" + encodeURIComponent(CONFIG.key))
+      .then(function (r) { return r.json(); })
+      .then(function (cfg) {
+        if (cfg.button_color && button) {
+          button.style.background = cfg.button_color;
+          CONFIG.buttonColor = cfg.button_color;
+        }
+        if (cfg.theme && cfg.theme !== "auto") {
+          CONFIG.theme = cfg.theme;
+        }
+      })
+      .catch(function () {});
+
     // Watch <html lang="..."> for changes — catches all i18n libraries
     // (i18next, vue-i18n, WordPress WPML, Django i18n, etc.)
     if (typeof MutationObserver !== "undefined") {

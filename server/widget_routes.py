@@ -134,6 +134,19 @@ async def widget_chat_page(request: Request, key: str = Query(...)):
     })
 
 
+@router.get("/public-config", include_in_schema=False)
+async def widget_public_config(key: str = Query(...)):
+    """Return lightweight appearance config (button_color, theme) without full auth."""
+    wk = _lookup_widget_key(key)
+    if wk is None:
+        raise HTTPException(status_code=401, detail="Invalid widget key")
+    cfg = wk.get_widget_config()
+    return {
+        "button_color": cfg.get("button_color", "#2563eb"),
+        "theme": cfg.get("theme", "auto"),
+    }
+
+
 @router.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 async def widget_admin_page(request: Request, key: str = Query(...)):
     """Serve the widget admin panel page."""

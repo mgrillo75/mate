@@ -141,7 +141,10 @@
     window.addEventListener("message", function (e) {
       if (!e.data) return;
       if (e.data.type === "mate-theme") {
-        document.documentElement.setAttribute("data-theme", e.data.theme === "dark" ? "dark" : "");
+        // Only apply parent-page theme when widget config is set to "auto"
+        if (!CFG.theme || CFG.theme === "auto") {
+          document.documentElement.setAttribute("data-theme", e.data.theme === "dark" ? "dark" : "");
+        }
       }
       if (e.data.type === "mate-context") {
         var lang = (e.data.lang || "en").split("-")[0].toLowerCase();
@@ -162,6 +165,14 @@
           currentLang = lang;
           if (pageContext) pageContext.lang = lang;
           _applyLang(lang);
+        }
+      }
+      if (e.data.type === "mate-color") {
+        var color = e.data.button_color;
+        if (color && /^#[0-9a-f]{3,6}$/i.test(color)) {
+          document.documentElement.style.setProperty("--w-primary", color);
+          document.documentElement.style.setProperty("--w-primary-hover", _darkenHex(color, 0.12));
+          document.documentElement.style.setProperty("--w-user-bubble", color);
         }
       }
     });
