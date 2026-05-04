@@ -175,6 +175,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Trust X-Forwarded-Proto/Host headers from the reverse proxy so that
+# request.base_url returns https:// when running behind TLS termination.
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
+
 # Encrypted session cookie required by both OAuth PKCE state and the session-based
 # auth check in server/auth.py.  https_only defaults to False so local HTTP dev works;
 # set SESSION_SECURE_COOKIE=true behind TLS in production.
