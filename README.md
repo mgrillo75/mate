@@ -99,6 +99,14 @@ When the agent responds with code, the canvas panel opens automatically to the r
 
 ![Work Room](documents/images/workroom.png)
 
+With the **Canvas Panel**, you can view and edit the generated code in a full-featured Ace Editor, and run/execute it in a sandboxed environment with a single click:
+
+![Canvas Code Editor](documents/images/canvas_code.png)
+*Editing generated code in the Canvas Panel*
+
+![Canvas Preview Mode](documents/images/canvas_preview.png)
+*Previewing and running the generated code in a sandboxed iframe*
+
 ### Agent Configuration
 Edit every aspect of an agent: model, instruction, RBAC roles, memory blocks, tools, MCP servers, planner, and schemas.
 

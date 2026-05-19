@@ -33,6 +33,12 @@ When the agent returns a code block the canvas panel opens automatically to the 
 - **Open in New Tab** — opens HTML/JS/CSS/SVG previews in a new browser tab (not available for Python)
 - **Close (✕)** — closes the canvas; chat expands back to full width
 
+![Canvas Code Editor](images/canvas_code.png)
+*Figure: The interactive Canvas editor displaying generated code*
+
+![Canvas Preview Mode](images/canvas_preview.png)
+*Figure: The preview mode running the generated HTML/JS application in a sandboxed iframe*
+
 **Canvas-to-prompt injection**
 
 Any edits made in the canvas editor are automatically included in the next message sent. A `⌨ lang · canvas` badge in the input area confirms the attachment. This lets you ask the agent to continue, fix, or extend its own code without copy-pasting.
