@@ -2072,7 +2072,7 @@ class DashboardServer:
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
             stats = self._get_usage_stats(7)
-            return self.templates.TemplateResponse("dashboard/index.html", {
+            return self.templates.TemplateResponse(request, "dashboard/index.html", {
                 "request": request,
                 "page_title": "Platform Overview",
                 "username": username,
@@ -2086,7 +2086,7 @@ class DashboardServer:
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
             users = self._get_all_users()
-            return self.templates.TemplateResponse("dashboard/users.html", {
+            return self.templates.TemplateResponse(request, "dashboard/users.html", {
                 "request": request,
                 "page_title": "User Management",
                 "username": username,
@@ -2107,7 +2107,7 @@ class DashboardServer:
 
             projects = self._get_all_projects()
             configs = self._get_all_agent_configs(selected_project_id) if selected_project_id else []
-            return self.templates.TemplateResponse("dashboard/agents.html", {
+            return self.templates.TemplateResponse(request, "dashboard/agents.html", {
                 "request": request,
                 "page_title": "Agent Management",
                 "username": username,
@@ -2130,7 +2130,7 @@ class DashboardServer:
 
             projects = self._get_all_projects()
             configs = self._get_all_agent_configs(selected_project_id) if selected_project_id else []
-            return self.templates.TemplateResponse("dashboard/agents_visual.html", {
+            return self.templates.TemplateResponse(request, "dashboard/agents_visual.html", {
                 "request": request,
                 "page_title": "Agent Visual Builder",
                 "username": username,
@@ -2145,7 +2145,7 @@ class DashboardServer:
             """Dashboard templates gallery page"""
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
-            return self.templates.TemplateResponse("dashboard/templates.html", {
+            return self.templates.TemplateResponse(request, "dashboard/templates.html", {
                 "request": request,
                 "page_title": "Template Library",
                 "username": username,
@@ -2158,7 +2158,7 @@ class DashboardServer:
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
             migrations = self._get_schema_migrations()
-            return self.templates.TemplateResponse("dashboard/migrations.html", {
+            return self.templates.TemplateResponse(request, "dashboard/migrations.html", {
                 "request": request,
                 "page_title": "Database Migrations",
                 "username": username,
@@ -2174,7 +2174,7 @@ class DashboardServer:
             logs = self._get_token_usage_logs(24, limit=1000) if view == "logs" else {"logs": []}
             # Non-admin users see only their own usage
             current_user_id = username
-            return self.templates.TemplateResponse("dashboard/usage.html", {
+            return self.templates.TemplateResponse(request, "dashboard/usage.html", {
                 "request": request,
                 "page_title": "Usage Analytics",
                 "username": username,
@@ -2191,7 +2191,7 @@ class DashboardServer:
             """Dashboard rate limits and budgets page"""
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
-            return self.templates.TemplateResponse("dashboard/rate_limits.html", {
+            return self.templates.TemplateResponse(request, "dashboard/rate_limits.html", {
                 "request": request,
                 "page_title": "Rate Limits & Budgets",
                 "username": username,
@@ -2203,7 +2203,7 @@ class DashboardServer:
             """Dashboard traces page - OpenTelemetry distributed tracing viewer"""
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
-            return self.templates.TemplateResponse("dashboard/traces.html", {
+            return self.templates.TemplateResponse(request, "dashboard/traces.html", {
                 "request": request,
                 "page_title": "Traces",
                 "username": username,
@@ -2217,7 +2217,7 @@ class DashboardServer:
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
             # Extract hostname from request
             host = request.headers.get("host", "localhost").split(":")[0]
-            return self.templates.TemplateResponse("dashboard/docs.html", {
+            return self.templates.TemplateResponse(request, "dashboard/docs.html", {
                 "request": request,
                 "page_title": "Documentation",
                 "username": username,
@@ -2231,7 +2231,7 @@ class DashboardServer:
             """Dashboard audit log viewer (EU AI Act compliance)."""
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
-            return self.templates.TemplateResponse("dashboard/audit_logs.html", {
+            return self.templates.TemplateResponse(request, "dashboard/audit_logs.html", {
                 "request": request,
                 "page_title": "Audit Logs",
                 "username": username,
@@ -3963,7 +3963,7 @@ class DashboardServer:
         async def dashboard_evals(request: Request, username: str = Depends(self._get_auth_user_dependency)):
             if not self._get_is_admin(request):
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
-            return self.templates.TemplateResponse("dashboard/evals.html", {
+            return self.templates.TemplateResponse(request, "dashboard/evals.html", {
                 "request": request,
                 "page_title": "Evals",
                 "username": username,
@@ -4444,7 +4444,7 @@ class DashboardServer:
                 return RedirectResponse(url="/dashboard/workroom", status_code=302)
             projects = self._get_all_projects()
             agents = self._get_all_agent_configs()
-            return self.templates.TemplateResponse("dashboard/triggers.html", {
+            return self.templates.TemplateResponse(request, "dashboard/triggers.html", {
                 "request": request,
                 "page_title": "Triggers",
                 "username": username,
@@ -4475,7 +4475,7 @@ class DashboardServer:
                     "description": desc,
                     "type": a.get("type", "llm"),
                 })
-            return self.templates.TemplateResponse("dashboard/workroom.html", {
+            return self.templates.TemplateResponse(request, "dashboard/workroom.html", {
                 "request": request,
                 "page_title": "Work Room",
                 "username": username,

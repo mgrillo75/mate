@@ -179,7 +179,7 @@ async def widget_chat_page(request: Request, key: str = Query(...)):
     if wk is None:
         return HTMLResponse("<h3>Invalid widget key</h3>", status_code=401)
     widget_cfg = wk.get_widget_config()
-    return templates.TemplateResponse("widget/chat.html", {
+    return templates.TemplateResponse(request, "widget/chat.html", {
         "request": request,
         "api_key": key,
         "agent_name": wk.agent_name,
@@ -206,7 +206,7 @@ async def widget_admin_page(request: Request, key: str = Query(...)):
     wk = _lookup_widget_key(key)
     if wk is None:
         return HTMLResponse("<h3>Invalid widget key</h3>", status_code=401)
-    return templates.TemplateResponse("widget/admin.html", {
+    return templates.TemplateResponse(request, "widget/admin.html", {
         "request": request,
         "api_key": key,
         "agent_name": wk.agent_name,

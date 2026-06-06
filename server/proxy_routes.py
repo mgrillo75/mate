@@ -18,7 +18,7 @@ from pathlib import Path
 import httpx
 import websockets
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect, Query, status
-from fastapi.responses import StreamingResponse, Response, FileResponse, JSONResponse
+from fastapi.responses import StreamingResponse, Response, FileResponse, JSONResponse, RedirectResponse
 from fastapi.openapi.docs import get_swagger_ui_html, get_redoc_html
 
 from shared.utils.auth_utils import verify_token
@@ -56,23 +56,10 @@ def configure_proxy(adk_host: str, adk_port: int):
     ADK_PORT = adk_port
 
 
-@router.get("/", tags=["Proxy - ADK Web"])
-async def root(request: Request, username: str = Depends(get_auth_user)):
-    """Root endpoint - proxies to ADK web server."""
-    target_url = f"http://{ADK_HOST}:{ADK_PORT}/"
-    try:
-        async with httpx.AsyncClient() as client:
-            response = await client.get(target_url, timeout=30.0)
-            return Response(
-                content=response.content,
-                status_code=response.status_code,
-                headers=dict(response.headers),
-            )
-    except httpx.RequestError as e:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"ADK server is not available: {str(e)}",
-        )
+@router.get("/", include_in_schema=False)
+async def root(request: Request):
+    """Root endpoint - redirects to dashboard."""
+    return RedirectResponse(url="/dashboard/workroom", status_code=302)
 
 
 @router.get("/docs", tags=["Proxy - ADK Documentation"])

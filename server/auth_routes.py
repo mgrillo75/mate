@@ -42,7 +42,7 @@ async def login_page(request: Request):
         "unknown_provider": "Unknown OAuth provider.",
     }
     error_key = request.query_params.get("error", "")
-    return templates.TemplateResponse("login.html", {
+    return templates.TemplateResponse(request, "login.html", {
         "request": request,
         "google_enabled": google_enabled(),
         "github_enabled": github_enabled(),

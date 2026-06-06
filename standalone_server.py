@@ -279,7 +279,7 @@ def create_app():
     @adk_app.get("/", response_class=HTMLResponse)
     async def chat_page(request: Request):
         """Serve the standalone chat UI."""
-        return templates.TemplateResponse("standalone/chat.html", {
+        return templates.TemplateResponse(request, "standalone/chat.html", {
             "request": request,
             "agent_name": ROOT_AGENT_NAME,
         })
