@@ -21,8 +21,12 @@ COPY requirements.txt ./requirements.txt
 # Install Python dependencies
 RUN uv pip install --no-cache-dir --system -r ./requirements.txt
 
+# Set Playwright browser path to a shared directory accessible by non-root user
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
 # Install Playwright browser binaries and system dependencies (as root)
-RUN python -m playwright install --with-deps chromium
+RUN python -m playwright install --with-deps chromium \
+    && chmod -R 755 /ms-playwright
 
 # Install additional dependencies mentioned in README
 # RUN uv pip install --no-cache-dir --system google-adk litellm
