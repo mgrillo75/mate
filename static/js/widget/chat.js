@@ -325,6 +325,7 @@
     var reader = response.body.getReader();
     var decoder = new TextDecoder();
     var buffer = "";
+    var segmentText = "";
     activeAgentText = "";
     activeAgentEl = null;
     activeAgentAuthor = "";
@@ -413,6 +414,7 @@
         if (author && author !== activeAgentAuthor) {
           activeAgentAuthor = author;
           activeAgentText = "";
+          segmentText = "";
           // When author changes, start a new bubble instead of overwriting/resetting the existing one.
           activeAgentEl = null;
         }
@@ -431,6 +433,7 @@
 
         if (hasToolPart) {
           _showTyping(true);
+          segmentText = "";
           return;
         }
 
@@ -458,15 +461,21 @@
           _showTyping(false);
           _ensureBubble();
 
-          if (activeAgentText && t.length >= activeAgentText.length && t.indexOf(activeAgentText) === 0) {
-            activeAgentText = t;
-          } else if (activeAgentText && activeAgentText.indexOf(t) === 0 && t.length <= activeAgentText.length) {
+          var delta = "";
+          if (segmentText && t.indexOf(segmentText) === 0) {
+            delta = t.slice(segmentText.length);
+            segmentText = t;
+          } else if (segmentText && segmentText.indexOf(t) === 0) {
             continue;
           } else {
-            activeAgentText += t;
+            delta = t;
+            segmentText = segmentText ? (segmentText + t) : t;
           }
 
-          _updateMessage(activeAgentEl, activeAgentText);
+          if (delta) {
+            activeAgentText += delta;
+            _updateMessage(activeAgentEl, activeAgentText);
+          }
         }
       } catch (_) {}
     }
