@@ -11,6 +11,7 @@ Provides:
 
 import json
 import logging
+import mimetypes
 import os
 import secrets
 import tempfile
@@ -832,3 +833,82 @@ async def get_embed_code(
         return {"success": True, "embed_code": embed_code, "api_key": wk.api_key}
     finally:
         session.close()
+
+
+# ---------------------------------------------------------------------------
+# Public Widget Artifacts Proxy & Fallback
+# ---------------------------------------------------------------------------
+
+public_artifacts_router = APIRouter(tags=["Widget - Artifacts"])
+
+@public_artifacts_router.get("/api/widget/artifacts/{app_name}/{user_id}/{session_id}/{filename}/{version_id}")
+async def get_widget_artifact_proxy(
+    app_name: str,
+    user_id: str,
+    session_id: str,
+    filename: str,
+    version_id: str,
+):
+    """Proxy widget artifact retrieval to ADK server without requiring auth."""
+    target_url = f"http://{ADK_HOST}:{ADK_PORT}/apps/{app_name}/users/{user_id}/sessions/{session_id}/artifacts/{filename}/versions/{version_id}"
+    client = httpx.AsyncClient(timeout=60.0)
+    try:
+        req = client.build_request("GET", target_url)
+        r = await client.send(req, stream=True)
+        if r.status_code == 404:
+            await r.aclose()
+            await client.aclose()
+            return await get_widget_artifact_fallback(filename)
+            
+        async def streamer():
+            try:
+                async for chunk in r.aiter_bytes():
+                    yield chunk
+            finally:
+                await r.aclose()
+                await client.aclose()
+
+        return StreamingResponse(
+            streamer(),
+            status_code=r.status_code,
+            headers=dict(r.headers),
+            media_type=r.headers.get("content-type"),
+        )
+    except httpx.RequestError:
+        await client.aclose()
+        return await get_widget_artifact_fallback(filename)
+
+
+@public_artifacts_router.get("/api/widget/artifacts/{filename}")
+async def get_widget_artifact_fallback(filename: str):
+    """Fallback to search the local artifacts directory recursively for the filename."""
+    artifacts_dir = project_root / "artifacts"
+    if not artifacts_dir.exists():
+        raise HTTPException(status_code=404, detail="Artifacts directory not found")
+    
+    # Search recursively for the filename
+    matched_paths = list(artifacts_dir.rglob(filename))
+    if not matched_paths:
+        raise HTTPException(status_code=404, detail="Artifact file not found")
+    
+    # Sort by mtime, newest first
+    matched_paths.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+    target_path = matched_paths[0]
+    
+    try:
+        data = target_path.read_bytes()
+        mime_type, _ = mimetypes.guess_type(filename)
+        if not mime_type:
+            mime_type = "image/png"
+            
+        import base64
+        base64_data = base64.b64encode(data).decode("utf-8")
+        return {
+            "inline_data": {
+                "data": base64_data,
+                "mime_type": mime_type
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading artifact: {str(e)}")
+

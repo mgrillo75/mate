@@ -298,6 +298,7 @@ from server.widget_routes import (
     admin_api_router as widget_admin_api_router,
     dashboard_widget_router,
     configure_widget_proxy,
+    public_artifacts_router,
 )
 
 configure_widget_proxy(ADK_HOST, ADK_PORT)
@@ -307,6 +308,7 @@ app.include_router(oauth_router)
 app.include_router(widget_router)
 app.include_router(widget_admin_api_router)
 app.include_router(dashboard_widget_router)
+app.include_router(public_artifacts_router)
 app.include_router(proxy_router)
 app.include_router(browser_router)
 

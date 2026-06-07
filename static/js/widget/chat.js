@@ -29,6 +29,9 @@
   let activeAgentEl = null;
   let activeAgentText = "";
   let activeAgentAuthor = "";
+  let activeAgentImages = [];
+  const artifactCache = {};
+  const IMAGE_EXTENSIONS = [".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".bmp"];
 
   // UI string translations — placeholder, send button, new-chat button, stop button, interrupted message
   const UI_STRINGS = {
@@ -325,6 +328,7 @@
     activeAgentText = "";
     activeAgentEl = null;
     activeAgentAuthor = "";
+    activeAgentImages = [];
 
     var THINKING_HTML = '<span class="widget-thinking-inline">' +
       '<span class="widget-thinking-dot"></span>' +
@@ -379,6 +383,32 @@
         var actions = evt.actions || {};
         if (actions.transfer_to_agent || actions.escalate) return;
 
+        // --- Handle artifact delta (image artifacts) ---
+        var artifactDelta = actions.artifactDelta || actions.artifact_delta;
+        if (artifactDelta && typeof artifactDelta === "object") {
+          var filenames = Object.keys(artifactDelta);
+          for (var ai = 0; ai < filenames.length; ai++) {
+            var artFilename = filenames[ai];
+            var artVersion = artifactDelta[artFilename];
+            var lowerName = artFilename.toLowerCase();
+            var isImage = IMAGE_EXTENSIONS.some(function (ext) {
+              return lowerName.endsWith(ext);
+            });
+            if (isImage) {
+              _showTyping(false);
+              _ensureBubble();
+              
+              var publicUrl = BASE + "/api/widget/artifacts/" + AGENT_NAME + "/" + userId + "/" + sessionId + "/" + artFilename + "/" + artVersion;
+              var alreadyAdded = activeAgentImages.some(function(img) { return img.url === publicUrl; });
+              if (!alreadyAdded) {
+                var imgHtml = '<img class="widget-msg-image widget-generated-image art-lazy-load" data-art-url="' + publicUrl + '" alt="' + artFilename + '">';
+                activeAgentImages.push({ url: publicUrl, html: imgHtml });
+              }
+              _updateMessage(activeAgentEl, activeAgentText);
+            }
+          }
+        }
+
         var author = evt.author || "";
         if (author && author !== activeAgentAuthor) {
           activeAgentAuthor = author;
@@ -405,6 +435,23 @@
         }
 
         for (var j = 0; j < parts.length; j++) {
+          // Handle inline image data (generated artifacts)
+          var inlineData = parts[j].inline_data || parts[j].inlineData;
+          if (inlineData && inlineData.mime_type && inlineData.mime_type.indexOf('image/') === 0) {
+            _showTyping(false);
+            _ensureBubble();
+            var cleanBase64 = inlineData.data.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
+            var imgSrc = 'data:' + inlineData.mime_type + ';base64,' + cleanBase64;
+            
+            var exists = activeAgentImages.some(function(img) { return img.src === imgSrc; });
+            if (!exists) {
+              var imgHtml = '<img src="' + imgSrc + '" class="widget-msg-image widget-generated-image" alt="Generated image">';
+              activeAgentImages.push({ type: "inline", src: imgSrc, html: imgHtml });
+            }
+            _updateMessage(activeAgentEl, activeAgentText);
+            continue;
+          }
+
           var t = parts[j].text;
           if (!t) continue;
 
@@ -672,7 +719,19 @@
   }
 
   function _updateMessage(el, text) {
-    el.innerHTML = _renderMarkdown(text);
+    var html = _renderMarkdown(text);
+    if (activeAgentImages && activeAgentImages.length) {
+      activeAgentImages.forEach(function(img) {
+        if (img.type === "inline") {
+          html += img.html;
+        } else {
+          if (html.indexOf(img.url) === -1) {
+            html += img.html;
+          }
+        }
+      });
+    }
+    el.innerHTML = html;
     _scrollToBottom();
     _loadLazyArtifacts();
   }
@@ -683,6 +742,16 @@
       if (url && !imgEl.getAttribute("data-loading")) {
         imgEl.setAttribute("data-loading", "true");
         imgEl.style.opacity = "0.5";
+        
+        // Cache lookup
+        if (artifactCache[url]) {
+          imgEl.src = artifactCache[url];
+          imgEl.style.opacity = "1";
+          imgEl.classList.remove("art-lazy-load");
+          _scrollToBottom();
+          return;
+        }
+        
         fetch(url)
           .then(function(r) { return r.json(); })
           .then(function(data) {
@@ -690,7 +759,9 @@
              if (inlineData && inlineData.data) {
                  var mimeType = inlineData.mimeType || inlineData.mime_type || 'image/png';
                  var cleanBase64 = inlineData.data.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
-                 imgEl.src = 'data:' + mimeType + ';base64,' + cleanBase64;
+                 var base64Src = 'data:' + mimeType + ';base64,' + cleanBase64;
+                 artifactCache[url] = base64Src; // Cache it!
+                 imgEl.src = base64Src;
                  imgEl.style.opacity = "1";
                  imgEl.classList.remove("art-lazy-load");
                  _scrollToBottom();

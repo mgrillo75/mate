@@ -27,6 +27,8 @@
   var activeAgentEl = null;
   var activeAgentText = "";
   var activeAgentAuthor = "";
+  var activeAgentImages = [];
+  var artifactCache = {};
 
   var currentLang = "en";
   if (document.documentElement.lang) {
@@ -286,6 +288,7 @@
     activeAgentText = "";
     activeAgentEl = null;
     activeAgentAuthor = "";
+    activeAgentImages = [];
 
     var THINKING_HTML =
       '<span class="widget-thinking-inline">' +
@@ -347,40 +350,14 @@
             if (isImage) {
               _showTyping(false);
               _ensureBubble();
-              // Build artifact URL
-              var artUrl = BASE + "/apps/" + AGENT_NAME + "/users/" + userId +
-                "/sessions/" + sessionId + "/artifacts/" + artFilename +
-                "/versions/" + artVersion;
-              // Clear thinking dots if present
-              if (activeAgentEl.querySelector(".widget-thinking-inline")) {
-                activeAgentEl.innerHTML = "";
-              }
-              var imgEl = document.createElement("img");
-              imgEl.className = "widget-msg-image widget-generated-image";
-              imgEl.alt = artFilename;
-              imgEl.title = artFilename;
-              imgEl.style.opacity = "0.5";
-              activeAgentEl.appendChild(imgEl);
-              _scrollToBottom();
               
-              (function(imgElem, url) {
-                fetch(url)
-                  .then(function(r) { return r.json(); })
-                  .then(function(data) {
-                    var inlineData = data.inlineData || data.inline_data;
-                    if (inlineData && inlineData.data) {
-                      var mimeType = inlineData.mimeType || inlineData.mime_type || 'image/png';
-                      var cleanBase64 = inlineData.data.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
-                      imgElem.src = 'data:' + mimeType + ';base64,' + cleanBase64;
-                      imgElem.style.opacity = "1";
-                    } else {
-                      imgElem.style.display = "none";
-                    }
-                    _scrollToBottom();
-                  }).catch(function() {
-                    imgElem.style.display = "none";
-                  });
-              })(imgEl, artUrl);
+              var publicUrl = BASE + "/api/widget/artifacts/" + AGENT_NAME + "/" + userId + "/" + sessionId + "/" + artFilename + "/" + artVersion;
+              var alreadyAdded = activeAgentImages.some(function(img) { return img.url === publicUrl; });
+              if (!alreadyAdded) {
+                var imgHtml = '<img class="widget-msg-image widget-generated-image art-lazy-load" data-art-url="' + publicUrl + '" alt="' + artFilename + '">';
+                activeAgentImages.push({ url: publicUrl, html: imgHtml });
+              }
+              _updateMessage(activeAgentEl, activeAgentText);
             }
           }
           // If this event has no content (action-only artifact event), skip rest
@@ -424,16 +401,13 @@
             _ensureBubble();
             var cleanBase64 = inlineData.data.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
             var imgSrc = 'data:' + inlineData.mime_type + ';base64,' + cleanBase64;
-            var imgEl2 = document.createElement('img');
-            imgEl2.src = imgSrc;
-            imgEl2.className = 'widget-msg-image widget-generated-image';
-            imgEl2.alt = 'Generated image';
-            // If bubble had thinking dots, clear them first
-            if (activeAgentEl.querySelector('.widget-thinking-inline')) {
-              activeAgentEl.innerHTML = '';
+            
+            var exists = activeAgentImages.some(function(img) { return img.src === imgSrc; });
+            if (!exists) {
+              var imgHtml = '<img src="' + imgSrc + '" class="widget-msg-image widget-generated-image" alt="Generated image">';
+              activeAgentImages.push({ type: "inline", src: imgSrc, html: imgHtml });
             }
-            activeAgentEl.appendChild(imgEl2);
-            _scrollToBottom();
+            _updateMessage(activeAgentEl, activeAgentText);
             continue;
           }
 
@@ -701,7 +675,19 @@
   }
 
   function _updateMessage(el, text) {
-    el.innerHTML = _renderMarkdown(text);
+    var html = _renderMarkdown(text);
+    if (activeAgentImages && activeAgentImages.length) {
+      activeAgentImages.forEach(function(img) {
+        if (img.type === "inline") {
+          html += img.html;
+        } else {
+          if (html.indexOf(img.url) === -1) {
+            html += img.html;
+          }
+        }
+      });
+    }
+    el.innerHTML = html;
     _scrollToBottom();
     _loadLazyArtifacts();
   }
@@ -712,6 +698,16 @@
       if (url && !imgEl.getAttribute("data-loading")) {
         imgEl.setAttribute("data-loading", "true");
         imgEl.style.opacity = "0.5";
+        
+        // Cache lookup
+        if (artifactCache[url]) {
+          imgEl.src = artifactCache[url];
+          imgEl.style.opacity = "1";
+          imgEl.classList.remove("art-lazy-load");
+          _scrollToBottom();
+          return;
+        }
+        
         fetch(url)
           .then(function(r) { return r.json(); })
           .then(function(data) {
@@ -719,7 +715,9 @@
              if (inlineData && inlineData.data) {
                  var mimeType = inlineData.mimeType || inlineData.mime_type || 'image/png';
                  var cleanBase64 = inlineData.data.replace(/\s+/g, '').replace(/-/g, '+').replace(/_/g, '/');
-                 imgEl.src = 'data:' + mimeType + ';base64,' + cleanBase64;
+                 var base64Src = 'data:' + mimeType + ';base64,' + cleanBase64;
+                 artifactCache[url] = base64Src; // Cache it!
+                 imgEl.src = base64Src;
                  imgEl.style.opacity = "1";
                  imgEl.classList.remove("art-lazy-load");
                  _scrollToBottom();
