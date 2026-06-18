@@ -88,6 +88,43 @@ class TestModelSwitching(unittest.TestCase):
             create_model(model_name="ollama/llama3.2")
         self.assertTrue(any("ollama_chat" in msg for msg in cm.output))
 
+    @patch('utils.utils.LiteLlm')
+    def test_local_servers_routing(self, mock_lite_llm):
+        """Test that local servers (lm_studio, llamacpp, localai, llamafile) route correctly."""
+        from utils.utils import create_model
+        
+        # Test LM Studio with custom env var
+        with patch.dict(os.environ, {"LM_STUDIO_BASE_URL": "http://127.0.0.1:1234/v1"}):
+            create_model(model_name="lm_studio/qwen2.5")
+            mock_lite_llm.assert_called_with(
+                "openai/qwen2.5",
+                timeout=1200,
+                api_base="http://127.0.0.1:1234/v1",
+                api_key="local-server"
+            )
+            
+        # Test llama.cpp default
+        with patch.dict(os.environ, {}, clear=False):
+            # Temporarily remove env var if it exists in test runner env
+            if "LLAMACPP_BASE_URL" in os.environ:
+                del os.environ["LLAMACPP_BASE_URL"]
+            create_model(model_name="llamacpp/llama3")
+            mock_lite_llm.assert_called_with(
+                "openai/llama3",
+                timeout=1200,
+                api_base="http://localhost:8080/v1",
+                api_key="local-server"
+            )
+            
+        # Test LocalAI with custom base_url parameter override
+        create_model(model_name="localai/mistral", base_url="http://custom-host:8080/v1")
+        mock_lite_llm.assert_called_with(
+            "openai/mistral",
+            timeout=1200,
+            api_base="http://custom-host:8080/v1",
+            api_key="local-server"
+        )
+
     def test_provider_detection(self):
         """Test _detect_provider extracts correct prefix."""
         from utils.utils import _detect_provider
@@ -96,6 +133,10 @@ class TestModelSwitching(unittest.TestCase):
         self.assertEqual(_detect_provider("anthropic/claude-3-haiku-20240307"), "anthropic")
         self.assertEqual(_detect_provider("ollama_chat/gemma3:latest"), "ollama_chat")
         self.assertEqual(_detect_provider("openrouter/deepseek/deepseek-chat"), "openrouter")
+        self.assertEqual(_detect_provider("lm_studio/qwen2.5"), "lm_studio")
+        self.assertEqual(_detect_provider("llamacpp/llama3"), "llamacpp")
+        self.assertEqual(_detect_provider("localai/mistral"), "localai")
+        self.assertEqual(_detect_provider("llamafile/phi3"), "llamafile")
         self.assertEqual(_detect_provider("gemini-2.5-flash"), "")
 
     def test_generic_litellm_providers(self):

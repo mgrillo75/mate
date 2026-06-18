@@ -102,6 +102,27 @@ def create_model(model_name: str = None, api_key: str = None, base_url: str = No
         if base_url:
             litellm_kwargs['api_base'] = base_url
 
+    elif provider in ('lm_studio', 'llamacpp', 'llama_cpp', 'localai', 'llamafile'):
+        # Extract underlying model name
+        model_parts = effective_model_name.split('/', 1)
+        model_suffix = model_parts[1] if len(model_parts) > 1 else 'default'
+        
+        # Route through LiteLLM's OpenAI compatibility layer
+        effective_model_name = f"openai/{model_suffix}"
+        
+        # Set base URL based on provider
+        if provider == 'lm_studio':
+            litellm_kwargs['api_base'] = base_url or os.getenv("LM_STUDIO_BASE_URL", "http://localhost:1234/v1")
+        elif provider in ('llamacpp', 'llama_cpp'):
+            litellm_kwargs['api_base'] = base_url or os.getenv("LLAMACPP_BASE_URL", "http://localhost:8080/v1")
+        elif provider == 'localai':
+            litellm_kwargs['api_base'] = base_url or os.getenv("LOCALAI_BASE_URL", "http://localhost:8080/v1")
+        elif provider == 'llamafile':
+            litellm_kwargs['api_base'] = base_url or os.getenv("LLAMAFILE_BASE_URL", "http://localhost:8080/v1")
+            
+        # Set api_key to dummy key if not provided to prevent LiteLLM from raising Missing API Key error
+        litellm_kwargs['api_key'] = api_key or "local-server"
+
     else:
         if api_key:
             litellm_kwargs['api_key'] = api_key

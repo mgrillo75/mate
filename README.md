@@ -33,7 +33,7 @@ A single agent in a notebook is easy. A hierarchy of agents serving real users i
 
 ### 🎨 The Studio — Build and iterate without touching code
 
-A drag-and-drop canvas where you create agents, draw parent→child connections, and attach tools without writing JSON or Python. Change a prompt, swap a model (from Gemini to GPT-4o to a local Ollama), or restructure an entire hierarchy — and it takes effect immediately, no redeploy.
+A drag-and-drop canvas where you create agents, draw parent→child connections, and attach tools without writing JSON or Python. Change a prompt, swap a model (from Gemini to GPT-4o to local servers like Ollama, LM Studio, llama.cpp, LocalAI, or Llamafile), or restructure an entire hierarchy — and it takes effect immediately, no redeploy.
 
 Every agent lives in the database. Every change is versioned. Roll back to any previous configuration in one click.
 
@@ -139,7 +139,7 @@ Drill into individual request logs — prompt / response / thought / tool-use to
 | Challenge | Raw ADK | MATE |
 |---|---|---|
 | Change a prompt or model | Edit code, redeploy | Dashboard edit, instant |
-| Switch LLM providers | Code change per agent | Change `model_name` in config (`ollama_chat/llama3.2`, `openai/gpt-4o`, …) |
+| Switch LLM providers | Code change per agent | Change `model_name` in config (`ollama_chat/llama3.2`, `lm_studio/qwen2.5`, `openai/gpt-4o`, …) |
 | Access control per agent | Build your own | Built-in RBAC, no code |
 | Token cost visibility | DIY | 4-type tracking + analytics |
 | Regression testing | Manual | Automated eval suite with LLM-as-Judge |
@@ -164,7 +164,7 @@ Drill into individual request logs — prompt / response / thought / tool-use to
 **The Studio**
 - Database-driven agent management — every field editable from the dashboard, zero redeploy
 - Drag-and-drop Visual Builder (React Flow) — create agents, draw parent→child edges, configure tools and MCP nodes inline
-- 50+ LLM providers via LiteLLM: Gemini, GPT-4o, Claude, Llama (Ollama), DeepSeek, OpenRouter, and more
+- 50+ LLM providers via LiteLLM: Gemini, GPT-4o, Claude, Llama (Ollama, LM Studio, llama.cpp, LocalAI, Llamafile), DeepSeek, OpenRouter, and more
 - Agent version history with one-click rollback
 - Self-building agents — the `create_agent` tool lets agents create, update, and delete other agents at runtime (admin-only, RBAC-protected)
 - Import/export agent configurations as JSON
@@ -235,6 +235,11 @@ OPENAI_API_KEY=...
 ANTHROPIC_API_KEY=...
 OPENROUTER_API_KEY=...
 OLLAMA_API_BASE=http://localhost:11434
+# Local API servers (optional base URL overrides)
+LM_STUDIO_BASE_URL=http://localhost:1234/v1
+LLAMACPP_BASE_URL=http://localhost:8080/v1
+LOCALAI_BASE_URL=http://localhost:8080/v1
+LLAMAFILE_BASE_URL=http://localhost:8080/v1
 
 # Optional features
 ROOT_AGENT_NAME=my_root_agent         # override default root agent
